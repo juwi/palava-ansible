@@ -1,0 +1,88 @@
+## UPSTREAM SERVICES ##
+
+upstream machine_production {
+  server 127.0.0.1:4250;
+}
+
+## WEB ##
+
+server {
+  listen 443 ssl;
+  server_name palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+
+  root /home/plv/www/web-production/dist/;
+  access_log /home/plv/log/production.web.nginx.access.log main;
+  error_log /home/plv/log/production.web.nginx.error.log;
+
+  location / {
+    if (-f $request_filename) {
+      expires max;
+      break;
+    }
+    rewrite ^/.+$ / last;
+  }
+}
+
+## MACHINE ##
+
+server {
+  listen 443 ssl;
+  server_name machine.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+
+  root /home/plv/www/static/machine/;
+  access_log /home/plv/log/static.nginx.access.log main;
+  error_log /home/plv/log/static.nginx.error.log;
+
+  try_files /$upgrade_status.txt @machine;
+
+  location @machine {
+    proxy_pass http://machine_production;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+    access_log /home/plv/log/production.machine.nginx.access.log main;
+    error_log /home/plv/log/production.machine.nginx.error.log;
+  }
+}
+
+## SSL REDIRECTS ##
+
+server {
+  listen 443 ssl;
+  server_name www.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  rewrite ^/(.*) https://palava.tv/$1 permanent;
+}
+
+## HTTP REDIRECTS ##
+
+server {
+  listen 80;
+  server_name palava.tv www.palava.tv machine.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  location ^~ /.well-known/ {
+    root /var/www/letsencrypt;
+    allow all;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+

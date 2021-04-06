@@ -1,0 +1,48 @@
+# TO SET SERVER IN MAINTENANCE MODE,
+# comment out the following line and do: sudo systemctl reload nginx
+# location ~ / { return 503; }
+
+error_page 400 @400;
+error_page 401 @401;
+error_page 403 @403;
+error_page 404 @404;
+error_page 500 @500;
+error_page 502 @502;
+error_page 503 @503;
+
+location @400 {
+  root /home/plv/www/static/errors/;
+  try_files /400.html /500.html;
+}
+
+location @401 {
+  root /home/plv/www/static/errors/;
+  auth_basic off;
+  try_files /401.html /500.html;
+}
+
+location @403 {
+  root /home/plv/www/static/errors/;
+  try_files /403.html /500.html;
+}
+
+location @404 {
+  root /home/plv/www/static/errors/;
+  try_files /404.html /500.html;
+}
+
+location @500 {
+  root /home/plv/www/static/errors/;
+  try_files /500.html /500.html;
+}
+
+location @502 {
+  root /home/plv/www/static/errors/;
+  try_files /502.html /500.html;
+}
+
+location @503 {
+  root /home/plv/www/static/errors/;
+  try_files /503.html /500.html;
+}
+

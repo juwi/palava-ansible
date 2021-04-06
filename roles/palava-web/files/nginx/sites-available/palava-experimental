@@ -1,0 +1,29 @@
+## UPSTREAM PALAVA SERVICES ##
+
+#upstream turn_server {
+#  server 127.0.0.1:3480;
+#}
+
+#server {
+#  listen 443 ssl;
+#  server_name turn.palava.tv;
+#  include /etc/nginx/conf.d/securityoptions.global;
+#  include /etc/nginx/conf.d/ssl.global;
+#  include error_pages.palava;
+#  expires max;
+
+#  root   /home/plv/www/static/stun/;
+#  access_log /home/plv/log/static.nginx.access.log main;
+#  error_log /home/plv/log/static.nginx.error.log;
+
+#  location @machine {
+#    proxy_pass http://turn_server;
+#    proxy_http_version 1.1;
+#    proxy_set_header Upgrade $http_upgrade;
+#    proxy_set_header Connection "upgrade";
+#    proxy_read_timeout 86400;
+#    access_log /home/plv/log/turn.nginx.access.log main;
+#    error_log /home/plv/log/turn.nginx.error.log;
+#  }
+#}
+

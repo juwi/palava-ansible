@@ -1,0 +1,173 @@
+## PRODUCTION BLOG ##
+
+server {
+  listen 443 ssl;
+  server_name blog.palava.tv;
+  #include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+  expires 60m;
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+  add_header X-Content-Type-Options nosniff;
+  add_header X-Frame-Options SAMEORIGIN;
+  add_header X-XSS-Protection "1; mode=block";
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://gist.github.com; img-src 'self' data: https://i.creativecommons.org https://licensebuttons.net; style-src 'self' 'unsafe-inline' https://github.githubassets.com; font-src 'self'; object-src 'none'; connect-src 'self'; media-src 'self' blob:;";
+
+  root   /home/plv/www/blog-production/output/;
+  access_log /home/plv/log/production.blog.nginx.access.log main;
+  error_log /home/plv/log/production.blog.nginx.error.log;
+}
+
+## STAGING BLOG ##
+
+server {
+  listen 443 ssl;
+  server_name blog.staging.palava.tv;
+ # include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include /etc/nginx/conf.d/error_pages.palava;
+  expires 1m;
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+  add_header X-Content-Type-Options nosniff;
+  add_header X-Frame-Options SAMEORIGIN;
+  add_header X-XSS-Protection "1; mode=block";
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://gist.github.com; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://github.githubassets.com; font-src 'self'; object-src 'none'; connect-src 'self'; media-src 'self' blob:;";
+
+  root   /home/plv/www/blog-staging/output/;
+  access_log /home/plv/log/staging.blog.nginx.access.log main;
+  error_log /home/plv/log/staging.blog.nginx.error.log;
+
+  auth_basic "palava.tv admin";
+  auth_basic_user_file /etc/nginx/.htpasswd; 
+}
+
+## STATS ##
+
+upstream prometheus {
+  server 127.0.0.1:9090;
+}
+
+upstream grafana {
+  server 127.0.0.1:3000;
+}
+
+server {
+  listen 443 ssl;
+  server_name prometheus.palava.tv;
+  include /etc/nginx/conf.d/ssl.global;
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+  add_header X-Content-Type-Options nosniff;
+  add_header X-Frame-Options SAMEORIGIN;
+  add_header X-XSS-Protection "1; mode=block";
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; img-src 'self'; style-src 'self'; font-src 'self'; object-src 'none'; connect-src 'self'; media-src 'self';";
+
+  auth_basic "Restricted area";
+  auth_basic_user_file /etc/nginx/basic_auth_passwords; 
+
+  location / {
+    proxy_pass http://prometheus;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+  }
+}
+
+server {
+  listen 443 ssl;
+  server_name grafana.palava.tv;
+  include /etc/nginx/conf.d/ssl.global;
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+  add_header X-Content-Type-Options nosniff;
+  add_header X-Frame-Options SAMEORIGIN;
+  add_header X-XSS-Protection "1; mode=block";
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self'; img-src 'self'; style-src 'self'; font-src 'self'; object-src 'none'; connect-src 'self'; media-src 'self';";
+
+  auth_basic "Restricted area";
+  auth_basic_user_file /etc/nginx/basic_auth_passwords; 
+
+  location / {
+    proxy_pass http://grafana;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+  }
+}
+
+## REMAINING SSL REDIRECTS ##
+
+server {
+  listen 443 ssl;
+  server_name palavatv.com www.palavatv.com stun.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  rewrite ^/(.*) https://palava.tv/$1 permanent;
+}
+
+## REMAINING HTTP REDIRECTS ##
+
+server {
+  listen 80;
+  server_name blog.palava.tv blog.staging.palava.tv stun.palava.tv palavatv.com www.palavatv.com;
+
+  include /etc/nginx/conf.d/securityoptions.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  location ^~ /.well-known/ {
+    root /var/www/letsencrypt;
+    allow all;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+## SERVER REVERSE ENTRY ##
+
+server {
+  listen 80;
+  server_name server.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+
+  access_log /home/plv/log/reverse.nginx.access.log main_with_ip;
+  error_log /home/plv/log/reverse.nginx.error.log;
+
+  return 404;
+}
+
+## DO NOT RESPOND TO UNDEFINED ENDPOINTS ##
+
+server {
+  listen 80;
+  server_name _;
+
+  access_log /home/plv/log/undefined.nginx.access.log main_with_ip;
+  error_log /home/plv/log/undefined.nginx.error.log;
+
+  return 404;
+}
+
+server {
+  listen 443 ssl;
+  server_name _;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+
+  access_log /home/plv/log/undefined.nginx.access.log main_with_ip;
+  error_log /home/plv/log/undefined.nginx.error.log;
+
+  return 404;
+}
+

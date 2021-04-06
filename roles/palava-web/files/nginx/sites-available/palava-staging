@@ -1,0 +1,76 @@
+## UPSTREAM SERVICES ##
+
+upstream machine_staging {
+  server 127.0.0.1:4240;
+}
+
+## WEB ##
+
+server {
+  listen 443 ssl;
+  server_name staging.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+  expires 1m;
+
+  root /home/plv/www/web-staging/dist/;
+  access_log /home/plv/log/staging.web.nginx.access.log main;
+  error_log /home/plv/log/staging.web.nginx.error.log;
+
+  location / {
+    if (-f $request_filename) {
+      expires 1m;
+      break;
+    }
+    rewrite ^/.+$ / last;
+  }
+}
+
+## MACHINE ##
+
+server {
+  listen 443 ssl;
+  server_name machine.staging.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+
+  root /home/plv/www/static/machine/;
+  access_log /home/plv/log/static.nginx.access.log main;
+  error_log /home/plv/log/static.nginx.error.log;
+
+  try_files /$upgrade_status.txt @machine;
+
+  location @machine {
+    proxy_pass http://machine_staging;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+    rewrite_log on;
+    access_log /home/plv/log/staging.machine.nginx.access.log main;
+    error_log /home/plv/log/staging.machine.nginx.error.log info;
+  }
+}
+
+## HTTP REDIRECTS ##
+
+server {
+  listen 80;
+  server_name staging.palava.tv machine.staging.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  location ^~ /.well-known/ {
+    root /var/www/letsencrypt;
+    allow all;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+

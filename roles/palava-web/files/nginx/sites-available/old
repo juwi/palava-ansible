@@ -1,0 +1,279 @@
+## UPSTREAM PALAVA SERVICES ##
+
+upstream machine_production {
+  server 127.0.0.1:4250;
+}
+
+#upstream machine_staging {
+#  server 127.0.0.1:4240;
+#}
+
+#upstream turn_server {
+#  server 127.0.0.1:3480;
+#}
+
+## PRODUCTION PORTAL ##
+
+#server {
+#  listen 443 ssl;
+#  server_name palava.tv lvps84-39-99-22.my-simpleroot.de;
+#  include /etc/nginx/conf.d/securityoptions.global;
+ # include /etc/nginx/conf.d/ssl.global;
+#  include error_pages.palava;
+
+#  root /home/plv/www/portal-production/build/;
+#  access_log /home/plv/log/production.portal.nginx.access.log main;
+#  error_log /home/plv/log/production.portal.nginx.error.log;
+
+#  location / {
+#    if (-f $request_filename) {
+#      expires max;
+#      break;
+#    }
+#    rewrite ^/.+$ / last;
+#  }
+#}
+
+## PRODUCTION WEB ##
+
+server {
+  listen 443 ssl;
+  server_name palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+
+  root /home/plv/www/web-production/dist/;
+  access_log /home/plv/log/production.web.nginx.access.log main;
+  error_log /home/plv/log/production.web.nginx.error.log;
+
+  location / {
+    if (-f $request_filename) {
+      expires max;
+      break;
+    }
+    rewrite ^/.+$ / last;
+  }
+}
+
+## PRODUCTION MACHINE ##
+
+server {
+  listen 443 ssl;
+  server_name machine.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+
+  root /home/plv/www/static/machine/;
+  access_log /home/plv/log/static.nginx.access.log main;
+  error_log /home/plv/log/static.nginx.error.log;
+
+  try_files /$upgrade_status.txt @machine;
+
+  location @machine {
+    proxy_pass http://machine_production;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 86400;
+    access_log /home/plv/log/production.machine.nginx.access.log main;
+    error_log /home/plv/log/production.machine.nginx.error.log;
+  }
+}
+
+## STAGING WEB ##
+
+#server {
+ # listen 443 ssl;
+ # server_name staging.palava.tv;
+  #include /etc/nginx/conf.d/securityoptions.global;
+ # include /etc/nginx/conf.d/ssl.global;
+ # include error_pages.palava;
+ # expires 1m;
+
+ # root /home/plv/www/web-staging/dist/;
+ # access_log /home/plv/log/staging.web.nginx.access.log main;
+ # error_log /home/plv/log/staging.web.nginx.error.log;
+
+ # location / {
+#    if (-f $request_filename) {
+    #  expires 1m;
+   #   break;
+  #  }
+ #   rewrite ^/.+$ / last;
+ # }
+#}
+
+## STAGING MACHINE ##
+
+#server {
+ # listen 443 ssl;
+ # server_name machine.staging.palava.tv;
+ # include /etc/nginx/conf.d/securityoptions.global;
+ # include /etc/nginx/conf.d/ssl.global;
+ # include error_pages.palava;
+
+ # root /home/plv/www/static/machine/;
+ # access_log /home/plv/log/static.nginx.access.log main;
+ # error_log /home/plv/log/static.nginx.error.log;
+
+  #try_files /$upgrade_status.txt @machine;
+
+ # location @machine {
+ #   proxy_pass http://machine_staging;
+#    proxy_http_version 1.1;
+#    proxy_set_header Upgrade $http_upgrade;
+   # proxy_set_header Connection "upgrade";
+  #  proxy_read_timeout 86400;
+ #   rewrite_log on;
+#    access_log /home/plv/log/staging.machine.nginx.access.log main;
+#    error_log /home/plv/log/staging.machine.nginx.error.log debug;
+#  }
+#}
+
+## PRODUCTION BLOG ##
+
+server {
+  listen 443 ssl;
+  server_name blog.palava.tv;
+  #include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+  expires 60m;
+
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload";
+add_header X-Content-Type-Options nosniff;
+add_header X-Frame-Options SAMEORIGIN;
+add_header X-XSS-Protection "1; mode=block";
+  add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://gist.github.com; img-src 'self' data: https://i.creativecommons.org https://licensebuttons.net; style-src 'self' 'unsafe-inline' https://github.githubassets.com; font-src 'self'; object-src 'none'; connect-src 'self'; media-src 'self' blob:;";
+
+  root   /home/plv/www/blog-production/output/;
+  access_log /home/plv/log/production.blog.nginx.access.log main;
+  error_log /home/plv/log/production.blog.nginx.error.log;
+}
+
+## STAGING BLOG ##
+
+server {
+  listen 443 ssl;
+  server_name blog.staging.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+  include error_pages.palava;
+  expires 60m;
+
+  root   /home/plv/www/blog-staging/output/;
+  access_log /home/plv/log/staging.blog.nginx.access.log main;
+  error_log /home/plv/log/staging.blog.nginx.error.log;
+}
+
+## STATIC PAGES ##
+
+#server {
+ # listen 443 ssl;
+ # server_name stun.palava.tv;
+
+#  include /etc/nginx/conf.d/securityoptions.global;
+#  include /etc/nginx/conf.d/ssl.global;
+#  include error_pages.palava;
+#  expires max;
+
+#  root   /home/plv/www/static/stun/;
+#  access_log /home/plv/log/static.nginx.access.log main;
+#  error_log /home/plv/log/static.nginx.error.log;
+#}
+
+#server {
+ # listen 443 ssl;
+ # server_name turn.palava.tv;
+ # include /etc/nginx/conf.d/securityoptions.global;
+ # include /etc/nginx/conf.d/ssl.global;
+ # include error_pages.palava;
+ # expires max;
+
+ # root   /home/plv/www/static/stun/;
+ # access_log /home/plv/log/static.nginx.access.log main;
+ # error_log /home/plv/log/static.nginx.error.log;
+
+#  location @machine {
+    #proxy_pass http://turn_server;
+    #proxy_http_version 1.1;
+   # proxy_set_header Upgrade $http_upgrade;
+  #  proxy_set_header Connection "upgrade";
+ #   proxy_read_timeout 86400;
+#    access_log /home/plv/log/turn.nginx.access.log main;
+#    error_log /home/plv/log/turn.nginx.error.log;
+#  }
+#}
+
+## REDIRECTS ##
+
+# misc secondary ssl domains, direct to https://palava.tv
+server {
+  listen 443 ssl;
+  server_name palavatv.com www.palavatv.com www.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  rewrite ^/(.*) https://palava.tv/$1 permanent;
+}
+
+# proper non-ssl to ssl redirects & letsencrypt config
+server {
+  listen 80;
+  server_name palava.tv www.palava.tv machine.palava.tv blog.palava.tv blog.staging.palava.tv stun.palava.tv turn.palava.tv palavatv.com www.palavatv.com lists.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+
+  access_log /home/plv/log/redirects.nginx.access.log main;
+  error_log /home/plv/log/redirects.nginx.error.log;
+
+  location ^~ /.well-known/ {
+    root /var/www/letsencrypt;
+    allow all;
+  }
+
+  location / {
+    return 301 https://$host$request_uri;
+  }
+}
+
+## SERVER REVERSE ENTRY ##
+
+server {
+  listen 80;
+  server_name server.palava.tv;
+  include /etc/nginx/conf.d/securityoptions.global;
+
+  access_log /home/plv/log/reverse.nginx.access.log main_with_ip;
+  error_log /home/plv/log/reverse.nginx.error.log;
+
+  return 404;
+}
+
+## DO NOT RESPOND TO UNDEFINED ENDPOINTS ##
+
+server {
+  listen 80;
+  server_name _;
+
+  access_log /home/plv/log/undefined.nginx.access.log main_with_ip;
+  error_log /home/plv/log/undefined.nginx.error.log;
+
+  return 404;
+}
+
+server {
+  listen 443 ssl;
+  server_name _;
+  include /etc/nginx/conf.d/securityoptions.global;
+  include /etc/nginx/conf.d/ssl.global;
+
+  access_log /home/plv/log/undefined.nginx.access.log main_with_ip;
+  error_log /home/plv/log/undefined.nginx.error.log;
+
+  return 404;
+}

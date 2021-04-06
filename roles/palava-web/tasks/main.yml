@@ -22,3 +22,9 @@
     repo: "{{ palava_web_repo }}"
     dest: "{{ palava_web_install_dir }}"
     version: "{{ palava_web_version }}"
+
+- name: copy the nginx config files
+  copy:
+    src: "nginx/"
+    dest: /etc/nginx/
+    directory_mode: yes
